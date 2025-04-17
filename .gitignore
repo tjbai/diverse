@@ -1,0 +1,15 @@
+*
+
+!.gitignore
+!.python-version
+!pyproject.toml
+!uv.lock
+
+!llama
+!llama/**.py
+
+!core
+!core/**.py
+
+!IDEAS.md
+!README.md
