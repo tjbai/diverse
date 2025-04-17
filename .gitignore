@@ -11,5 +11,16 @@
 !core
 !core/**.py
 
+!dumps
+!dumps/**.json
+
+!slurm
+!slurm/**.py
+!slurm/**.sh
+
 !IDEAS.md
 !README.md
+!LOG.md
+
+!data
+!data/**
