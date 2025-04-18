@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import List, Optional, Tuple, TypedDict
 
@@ -64,12 +65,15 @@ class Llama:
             This method initializes the distributed process group, sets the device to CUDA,
             and loads the pre-trained model and tokenizer.
         """
-        assert 1 <= max_seq_len <= 8192, f"max_seq_len must be between 1 and 8192, got {max_seq_len}."
-        assert os.path.isdir(ckpt_dir), f"Checkpoint directory '{ckpt_dir}' does not exist."
-        assert os.path.isfile(tokenizer_path), f"Tokenizer file '{tokenizer_path}' does not exist."
-        
+        if not (1 <= max_seq_len <= 8192):
+            warnings.warn(f"{max_seq_len} does not lie within [1, 8192]")
+
+        assert os.path.isdir(ckpt_dir)
+        assert os.path.isfile(tokenizer_path)
+
         if not torch.distributed.is_initialized():
             torch.distributed.init_process_group("nccl")
+
         if not model_parallel_is_initialized():
             if model_parallel_size is None:
                 model_parallel_size = int(os.environ.get("WORLD_SIZE", 1))
@@ -77,39 +81,42 @@ class Llama:
 
         local_rank = int(os.environ.get("LOCAL_RANK", 0))
         torch.cuda.set_device(local_rank)
-
-        # seed must be the same in all processes
         torch.manual_seed(seed)
-
         if local_rank > 0:
             sys.stdout = open(os.devnull, "w")
 
         start_time = time.time()
         checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
         assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
-        assert model_parallel_size == len(
-            checkpoints
-        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
+
+        assert model_parallel_size == len(checkpoints), \
+            f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
+
         ckpt_path = checkpoints[get_model_parallel_rank()]
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=True)
+
         with open(Path(ckpt_dir) / "params.json", "r") as f:
             params = json.loads(f.read())
 
-        model_args: ModelArgs = ModelArgs(
+        model_args = ModelArgs(
             max_seq_len=max_seq_len,
             max_batch_size=max_batch_size,
             **params,
         )
+
         tokenizer = Tokenizer(model_path=tokenizer_path)
         assert model_args.vocab_size == tokenizer.n_words
-        if torch.cuda.is_bf16_supported():
-            torch.set_default_tensor_type(torch.cuda.BFloat16Tensor)
-        else:
-            torch.set_default_tensor_type(torch.cuda.HalfTensor)
-        model = Transformer(model_args)
-        model.load_state_dict(checkpoint, strict=False)
-        print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
+        if torch.cuda.is_bf16_supported():
+            torch.set_default_device('cuda')
+            torch.set_default_dtype(torch.bfloat16)
+        else:
+            torch.set_default_dtype(torch.float16)
+
+        model = Transformer(model_args).cuda()
+        model.load_state_dict(checkpoint, strict=True)
+
+        print(f"Loaded in {time.time() - start_time:.2f} seconds")
         return Llama(model, tokenizer)
 
     def __init__(self, model: Transformer, tokenizer: Tokenizer):
