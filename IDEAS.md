@@ -1,4 +1,4 @@
-## how to handle distinguishing sequences?
+## 1. how to handle distinguishing sequences?
 
 1. apply alibi-style biases to attention scores while keeping everything at position 0
 
@@ -10,10 +10,10 @@
 
 5. have global attention on select layers
 
-## when is diversity useful for problem solving?
+## 2. when is diversity useful for problem solving?
 
 sanity check: generate a bunch of IID samples and evaluate different subsets. plot DPP probability against performance. try different embedding models.
 
-## how to teach diversity?
+## 3. how to teach diversity?
 
-TBD
+TBD -- results from (2) will be informative
