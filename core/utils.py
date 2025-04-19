@@ -8,6 +8,8 @@ import torch
 from math_verify import LatexExtractionConfig, parse, verify
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from nltk.util import ngrams
+from nltk.tokenize import word_tokenize
 
 from llama.generation import ChatPrediction
 
@@ -71,3 +73,9 @@ def maj_correct(solutions: List[str], gold: str) -> Dict:
 
 def mbr_correct(solutions: List[str]):
     pass
+
+def dist_n(strs: List[str], n: int = 3) -> float:
+    all_ngrams = []
+    for s in strs:
+        all_ngrams.extend(list(ngrams(word_tokenize(s), n)))
+    return len(set(all_ngrams)) / len(all_ngrams)
