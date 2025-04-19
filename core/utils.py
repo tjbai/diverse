@@ -1,9 +1,10 @@
 import socket
 import random
-from typing import List, Dict
 from collections import Counter
+from typing import List, Dict, Optional
 
 import torch
+import numpy as np
 
 from math_verify import LatexExtractionConfig, parse, verify
 from sentence_transformers import SentenceTransformer
@@ -23,8 +24,13 @@ def free_port() -> str:
 def parse_math(s: str):
     return parse(s, extraction_config=[LatexExtractionConfig()])
 
-def subsample(preds: List[ChatPrediction], k: int, seed: int = 42):
-    return random.Random(seed).sample([p['generation']['content'] for p in preds], k=k)
+def subsample(preds: List[ChatPrediction], k: int, seed: int = 42) -> Dict:
+    indices = random.Random(seed).sample(list(range(len(preds))), k=k)
+    return {
+        'content': [preds[i]['generation']['content'] for i in indices],
+        'logprobs': [preds[i]['logprobs'] for i in indices],
+        'indices': indices,
+    }
 
 def best_correct(
     solutions: List[str],
@@ -79,3 +85,25 @@ def dist_n(strs: List[str], n: int = 3) -> float:
     for s in strs:
         all_ngrams.extend(list(ngrams(word_tokenize(s), n)))
     return len(set(all_ngrams)) / len(all_ngrams)
+
+def avg_cosine_sim(seqs: List[str], sbert: SentenceTransformer) -> float:
+    embds = sbert.encode(seqs)
+    return torch.mean(torch.tril(sbert.similarity(embds, embds), diagonal=-1)).item()
+
+def build_dpp_kernel(
+    seqs: List[str],
+    sbert: SentenceTransformer,
+    seq_logprobs: Optional[List[List[float]]] = None,
+    normalize: bool = False,
+) -> Dict:
+    emb = sbert.encode(seqs, convert_to_numpy=True, normalize_embeddings=True)
+    if seq_logprobs is None: return emb.T
+    q = np.exp(0.5 * np.array([np.mean(lp) for lp in seq_logprobs]))
+    emb = emb * q[:, None]
+    return emb.T
+
+def dpp_score(kernel: np.ndarray, indices: List[int]) -> float:
+    B = kernel[:, indices]
+    sign, score = np.linalg.slogdet(B.T @ B)
+    assert sign > 0
+    return score
