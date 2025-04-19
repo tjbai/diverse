@@ -13,6 +13,7 @@
 
 !dumps
 !dumps/**.json
+!dumps/**.jsonl
 
 !slurm
 !slurm/**.py
