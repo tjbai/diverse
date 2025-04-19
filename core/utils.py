@@ -3,6 +3,8 @@ import random
 from typing import List, Dict
 from collections import Counter
 
+import torch
+
 from math_verify import LatexExtractionConfig, parse, verify
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -26,20 +28,35 @@ def best_correct(
     solutions: List[str],
     gold: str,
     problem: str,
-    rm: AutoModelForCausalLM,
+    rm: AutoModelForCausalLM, # assumed RLHFlow/Llama3.1-8B-ORM-Mistral-Data
     tokenizer: AutoTokenizer
 ) -> Dict:
-    # specialized to RLHFlow/Llama3.1-8B-ORM-Mistral-Data
     plus_id = 10
 
-    input_texts = [tokenizer.apply_chat_template([{
-        'role': 'user',
-        'content': f'{problem} {sol}'
-    }]) for sol in solutions]
+    input_texts = [tokenizer.apply_chat_template(
+        [{'role': 'user', 'content': f'{problem} {sol}'}],
+        add_generation_prompt=True,
+        tokenize=False
+    ) for sol in solutions]
 
     inputs = tokenizer(input_texts, padding=True, return_tensors="pt").to('cuda')
 
-    return {}
+    with torch.no_grad():
+        outputs = rm(**inputs)
+        logits = outputs.logits
+        last_positions = inputs.attention_mask.sum(dim=1) - 1
+        batch_indices = torch.arange(logits.size(0), device=logits.device)
+        probs = torch.softmax(logits[batch_indices, last_positions], dim=1)
+        best = torch.argmax(probs[:, plus_id]).item()
+
+    answers = [parse_math(sol) for sol in solutions]
+    gold_ans = parse_math(gold)
+
+    return {
+        'correct': verify(answers[best], gold_ans),
+        'answers': answers,
+        'gold': gold_ans,
+    }
 
 def maj_correct(solutions: List[str], gold: str) -> Dict:
     gold_ans = parse_math(gold)
