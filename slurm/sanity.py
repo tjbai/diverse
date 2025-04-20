@@ -27,6 +27,7 @@ for temp in [0.7, 1.0]:
         kernels[i] = build_dpp_kernel(preds, sbert=sbert)
         qual_kernels[i] = build_dpp_kernel(preds, sbert=sbert, seq_logprobs=logps)
 
+    rm_cache = {}
     for bsz in [4, 8, 16, 32]:
         for prob_idx, d in enumerate(tqdm(data)):
             for boot in range(50):
@@ -56,7 +57,7 @@ for temp in [0.7, 1.0]:
                     tokenizer=tokenizer,
                 )
                 row['maj_correct']  = maj_correct(**inputs)['correct']
-                row['best_correct'] = best_correct(**inputs)['correct']
+                row['best_correct'] = best_correct(**inputs, cache=rm_cache)['correct']
 
                 rows.append(row)
 
