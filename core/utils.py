@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from nltk.util import ngrams
 from nltk.tokenize import word_tokenize
-from sacrebleu.metrics import BLEU
+from sacrebleu import sentence_bleu
 
 from llama.generation import ChatPrediction
 
@@ -27,8 +27,8 @@ def parse_math(s: str):
 
 def sym_bleu(a: str, b: str) -> float:
     return 1/2 * (
-        BLEU.sentence_score(a, [b]).score +
-        BLEU.sentence_score(b, [a]).score
+        sentence_bleu(a, [b]).score +
+        sentence_bleu(b, [a]).score
     ) / 100.0
 
 def subsample(preds: List[ChatPrediction], k: int, seed: int = 42) -> Dict:
