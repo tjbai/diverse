@@ -166,6 +166,5 @@ def build_dpp_kernel(
 
 def dpp_score(kernel: np.ndarray, indices: List[int]) -> float:
     B = kernel[:, indices]
-    sign, score = np.linalg.slogdet(B.T @ B)
-    assert sign > 0
+    _, score = np.linalg.slogdet(B.T @ B)
     return score

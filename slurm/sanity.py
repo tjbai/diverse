@@ -16,7 +16,7 @@ tokenizer = AutoTokenizer.from_pretrained('/scratch4/jeisner1/tjbai/llama_orm')
 rm = AutoModelForCausalLM.from_pretrained('/scratch4/jeisner1/tjbai/llama_orm', torch_dtype=torch.bfloat16).to('cuda')
 
 rows = []
-for temp in [0.7, 1.0]:
+for temp in [0.3, 0.5, 0.7, 1.0]:
     with open(f'/home/tbai4/diverse/dumps/sample_math_val_t-{temp}.jsonl') as f:
         data = [json.loads(line) for line in f]
 

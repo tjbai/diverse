@@ -14,6 +14,7 @@
 !dumps
 !dumps/**.json
 !dumps/**.jsonl
+!dumps/**.parquet
 
 !slurm
 !slurm/**.py
