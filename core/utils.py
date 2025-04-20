@@ -66,11 +66,22 @@ def best_correct(
         'gold': gold_ans,
     }
 
-def maj_correct(solutions: List[str], gold: str) -> Dict:
+def maj_correct(solutions: List[str], gold: str, **_) -> Dict:
     gold_ans = parse_math(gold)
-    answers = [tuple(parse_math(sol)) for sol in solutions]
-    freq = Counter(answers)
-    mode, cnt = freq.most_common(1)[0]
+    
+    # matrix edge-case
+    def to_hashable(matrix_list):
+        return tuple(tuple(tuple(row) for row in matrix.tolist()) if hasattr(matrix, 'tolist') else matrix for matrix in matrix_list)
+    
+    answers = [to_hashable(parse_math(sol)) for sol in solutions]
+    
+    try:
+        freq = Counter(answers)
+        mode, cnt = freq.most_common(1)[0]
+    except IndexError:
+        print('encountered', answers)
+        raise
+        
     return {
         'correct': False if list(freq.values()).count(cnt) > 1 else verify(list(mode), gold_ans),
         'answers': answers,

@@ -20,7 +20,8 @@ llama = Llama.build(
    model_parallel_size=1,
 )
 
-problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='val')[:50]
+problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='val')[:200]
+
 
 BSZ = 32
 TOP_P = 1.0
@@ -28,10 +29,15 @@ TEMPS = [0.3, 0.5]
 MAX_GEN = 1024
 
 for temp in TEMPS:
-    with open(f'/home/tbai4/diverse/dumps/sample_math_val_t-{temp}.jsonl', 'a') as f:
+    with open(f'/home/tbai4/diverse/dumps/sample_math_val_t-{temp}.jsonl', 'a+') as f:
+        f.seek(0)
+        existing = set(json.loads(line)['problem']['problem'] for line in f)
+
         for problem in tqdm(problems, desc=f'temp={temp}'):
+            if problem['problem'] in existing:
+                continue
             preds = llama.chat_completion(
-                dialogs=[[{'role': 'user', 'content': f'Solve the following math problem step-by-step: {problem['problem']}\nPresent the answer in LaTex format: \boxed{{Your answer}}'}] for _ in range(BSZ)],
+                dialogs=[[{'role': 'user', 'content': f'Solve the following math problem step-by-step: {problem['problem']}\nPresent the answer in LaTex format: \\boxed{{Your answer}}'}] for _ in range(BSZ)],
                 temperature=temp,
                 top_p=TOP_P,
                 max_gen_len=MAX_GEN,
@@ -44,3 +50,4 @@ for temp in TEMPS:
                 'temperature': temp,
             }))
             f.write('\n')
+            existing.add(problem['problem'])
