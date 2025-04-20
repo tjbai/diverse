@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from nltk.util import ngrams
 from nltk.tokenize import word_tokenize
+from sacrebleu.metrics import BLEU
 
 from llama.generation import ChatPrediction
 
@@ -23,6 +24,12 @@ def free_port() -> str:
 
 def parse_math(s: str):
     return parse(s, extraction_config=[LatexExtractionConfig()])
+
+def sym_bleu(a: str, b: str) -> float:
+    return 1/2 * (
+        BLEU.sentence_score(a, [b]).score +
+        BLEU.sentence_score(b, [a]).score
+    ) / 100.0
 
 def subsample(preds: List[ChatPrediction], k: int, seed: int = 42) -> Dict:
     indices = random.Random(seed).sample(list(range(len(preds))), k=k)
@@ -39,6 +46,7 @@ def best_correct(
     rm: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     cache: Optional[Dict] = None,
+    **_
 ) -> Dict:
     cache = {} if cache is None else cache
     plus_id = 10
@@ -106,11 +114,33 @@ def maj_correct(solutions: List[str], gold: str, **_) -> Dict:
 
 def mbr_correct(
     solutions: List[str],
+    gold: str,
     sbert: Optional[SentenceTransformer] = None,
+    **_
 ) -> Dict:
-    # if sbert is included, use semantic similarity
-    # otherwise, use self-BLEU
-    return {}
+    if sbert is not None:
+        emb = sbert.encode(solutions, normalize_embeddings=True)
+        U = emb @ emb.T
+    else:
+        n = len(solutions)
+        U = np.zeros((n, n), dtype=np.float32)
+        for i in range(n):
+            for j in range(i + 1, n):
+                s = sym_bleu(solutions[i], solutions[j])
+                U[i, j] = U[j, i] = s
+        np.fill_diagonal(U, 1.0)
+
+    scores = U.mean(axis=1)
+    best = int(np.argmax(scores))
+    answers = [parse_math(sol) for sol in solutions]
+    gold_ans = parse_math(gold)
+    out = {
+        'correct': verify(answers[best], gold_ans),
+        'gold': gold_ans,
+        'best': best,
+    }
+
+    return out
 
 def dist_n(strs: List[str], n: int = 3) -> float:
     all_ngrams = []

@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 
 from core.utils import (
     subsample, build_dpp_kernel, dpp_score, maj_correct,
-    best_correct, dist_n, avg_cosine_sim,
+    best_correct, dist_n, avg_cosine_sim, mbr_correct
 )
 
 sbert = SentenceTransformer('all-MiniLM-L6-v2')
@@ -56,8 +56,10 @@ for temp in [0.7, 1.0]:
                     rm=rm,
                     tokenizer=tokenizer,
                 )
-                row['maj_correct']  = maj_correct(**inputs)['correct']
+                row['maj_correct'] = maj_correct(**inputs)['correct']
                 row['best_correct'] = best_correct(**inputs, cache=rm_cache)['correct']
+                row['sem_mbr_correct'] = mbr_correct(**inputs, sbert=sbert)['correct']
+                row['lex_mbr_correct'] = mbr_correct(**inputs)['correct']
 
                 rows.append(row)
 
