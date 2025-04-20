@@ -29,3 +29,6 @@
 
 !repl
 !repl/**repl.py
+
+!figures
+!figures/**.png

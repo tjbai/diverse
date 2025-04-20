@@ -56,3 +56,51 @@ for i, d in enumerate(data):
         })
 
 maj_res = [maj_correct(**s) for s in tqdm(inputs)]
+
+# %%
+import pandas as pd
+from tabulate import tabulate
+
+df = pd.read_parquet('dumps/bootstrap_small_acc.parquet')
+
+metrics   = ['dpp', 'qual_dpp', 'cosine_sim', 'dist_n', 'avg_log_prob']
+accuracy  = ['maj_correct', 'best_correct', 'sem_mbr_correct', 'lex_mbr_correct']
+keep_cols = metrics + accuracy
+
+acc_by_n = df.groupby('sample_size')[accuracy].mean()
+acc_by_temp = df.groupby('temp')[accuracy].mean()
+
+def corr_block(sub):
+    return sub[keep_cols].corr().loc[metrics, accuracy]
+
+print(tabulate(acc_by_n, headers='keys', tablefmt='github'))
+print(tabulate(acc_by_temp, headers='keys', tablefmt='github'))
+
+corr_by_pair = {
+    (temp, n): corr_block(group)
+    for (temp, n), group in df.groupby(['temp', 'sample_size'])
+}
+
+for k, v in corr_by_pair.items():
+    print(k)
+    print(v)
+
+import statsmodels.formula.api as smf
+
+m = smf.logit('maj_correct ~ dpp*avg_log_prob', data=df).fit()
+
+print(m.summary())
+
+from pingouin import partial_corr
+partial_corr(df, x='dpp', y='maj_correct', covar='avg_log_prob', method='spearman')
+
+df['qbin'] = pd.qcut(df.avg_log_prob,4,labels=False)
+print(df.groupby('qbin')['dpp'].corr(df.maj_correct))
+
+plt.scatter(df[df['temp']==0.7]['avg_log_prob'], df[df['temp']==0.7]['dpp'], color='blue', s=df[df['temp']==0.7]['sample_size']*5, alpha=0.7, label='temp=0.7')
+plt.scatter(df[df['temp']==1.0]['avg_log_prob'], df[df['temp']==1.0]['dpp'], color='red', s=df[df['temp']==1.0]['sample_size']*5, alpha=0.7, label='temp=1.0')
+plt.title('MATH preliminary')
+plt.xlabel('avg log prob')
+plt.ylabel('dpp score')
+plt.legend()
+plt.show()

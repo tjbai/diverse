@@ -1,4 +1,4 @@
-## 1. how to handle distinguishing sequences?
+**how to handle distinguishing sequences?**
 
 1. apply alibi-style biases to attention scores while keeping everything at position 0
 
@@ -10,10 +10,26 @@
 
 5. have global attention on select layers
 
-## 2. when is diversity useful for problem solving?
+**when is diversity useful for problem solving?**
 
 sanity check: generate a bunch of IID samples and evaluate different subsets. plot DPP probability against performance. try different embedding models.
 
-## 3. how to teach diversity?
+**how to teach diversity?**
 
 TBD -- results from (2) will be informative
+
+**baselines**
+
+BS, diverse BS, stochastic BS, poisson stochastic BS, arithmetic sampling, k-DPP
+
+an upside is that we can train without gold labels and possibly task agnostic because we just care about balancing diversity with quality.
+
+inference is also a lot more efficient.
+
+**notes**
+
+"This separation is beneficial because there are distinct and potentially contradictory desiderata for the two sets. We wish for our evidence set to cover a large, representative portion of the search space to obtain a more accurate estimate of risk. However, we want our hypothesis set to only cover the narrower, high-quality region of the space, as we do not want to consider candidate hypotheses that are low-quality."
+
+Under our scheme do we have to some importance re-weighting for MBR?
+
+###
