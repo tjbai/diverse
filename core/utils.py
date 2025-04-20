@@ -36,30 +36,46 @@ def best_correct(
     solutions: List[str],
     gold: str,
     problem: str,
-    rm: AutoModelForCausalLM, # assumed RLHFlow/Llama3.1-8B-ORM-Mistral-Data
-    tokenizer: AutoTokenizer
+    rm: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    cache: Optional[Dict] = None,
 ) -> Dict:
+    cache = {} if cache is None else cache
     plus_id = 10
 
-    input_texts = [tokenizer.apply_chat_template(
-        [{'role': 'user', 'content': f'{problem} {sol}'}],
-        add_generation_prompt=True,
-        tokenize=False
-    ) for sol in solutions]
+    missing, probs = [], []
+    key = lambda sol: (problem, sol)
+    for sol in solutions:
+        if key(sol) in cache:
+            probs.append(cache[key(sol)])
+        else:
+            probs.append(None)
+            missing.append(sol)
 
-    inputs = tokenizer(input_texts, padding=True, return_tensors="pt").to('cuda')
+    if missing:
+        input_texts = [
+            tokenizer.apply_chat_template(
+                [{'role': 'user', 'content': f'{problem} {sol}'}],
+                add_generation_prompt=True, tokenize=False
+            )
+            for sol in missing
+        ]
+        inputs = tokenizer(input_texts, padding=True, return_tensors="pt").to("cuda")
 
-    with torch.no_grad():
-        outputs = rm(**inputs)
-        logits = outputs.logits
-        last_positions = inputs.attention_mask.sum(dim=1) - 1
-        batch_indices = torch.arange(logits.size(0), device=logits.device)
-        probs = torch.softmax(logits[batch_indices, last_positions], dim=1)
-        best = torch.argmax(probs[:, plus_id]).item()
+        with torch.no_grad():
+            logits = rm(**inputs).logits
+            last = inputs.attention_mask.sum(1) - 1
+            batch = torch.arange(logits.size(0), device=logits.device)
+            p_plus = torch.softmax(logits[batch, last], 1)[:, plus_id].tolist()
 
+        for sol, p in zip(missing, p_plus):
+            cache[key(sol)] = p
+        it = iter(p_plus)
+        probs = [p if p is not None else next(it) for p in probs]
+
+    best = int(np.argmax(probs))
     answers = [parse_math(sol) for sol in solutions]
     gold_ans = parse_math(gold)
-
     return {
         'correct': verify(answers[best], gold_ans),
         'answers': answers,
@@ -68,20 +84,20 @@ def best_correct(
 
 def maj_correct(solutions: List[str], gold: str, **_) -> Dict:
     gold_ans = parse_math(gold)
-    
+
     # matrix edge-case
     def to_hashable(matrix_list):
         return tuple(tuple(tuple(row) for row in matrix.tolist()) if hasattr(matrix, 'tolist') else matrix for matrix in matrix_list)
-    
+
     answers = [to_hashable(parse_math(sol)) for sol in solutions]
-    
+
     try:
         freq = Counter(answers)
         mode, cnt = freq.most_common(1)[0]
     except IndexError:
         print('encountered', answers)
         raise
-        
+
     return {
         'correct': False if list(freq.values()).count(cnt) > 1 else verify(list(mode), gold_ans),
         'answers': answers,
