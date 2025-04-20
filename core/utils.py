@@ -39,6 +39,9 @@ def subsample(preds: List[ChatPrediction], k: int, seed: int = 42) -> Dict:
         'indices': indices,
     }
 
+def is_correct(sol: str, gold: str) -> bool:
+    return verify(parse_math(sol), parse_math(gold))
+
 def best_correct(
     solutions: List[str],
     gold: str,

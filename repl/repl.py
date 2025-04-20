@@ -73,11 +73,21 @@ acc_by_temp = df.groupby('temp')[accuracy].mean()
 def corr_block(sub):
     return sub[keep_cols].corr().loc[metrics, accuracy]
 
+from pingouin import partial_corr
+def par_corr_block(sub):
+    return partial_corr(sub, x='dpp', y='maj_correct', covar='avg_log_prob', method='spearman')
+    return sub[keep_cols].corr().loc[metrics, accuracy]
+
 print(tabulate(acc_by_n, headers='keys', tablefmt='github'))
 print(tabulate(acc_by_temp, headers='keys', tablefmt='github'))
 
 corr_by_pair = {
     (temp, n): corr_block(group)
+    for (temp, n), group in df.groupby(['temp', 'sample_size'])
+}
+
+par_corr_by_pair = {
+    (temp, n): par_corr_block(group)
     for (temp, n), group in df.groupby(['temp', 'sample_size'])
 }
 
@@ -104,3 +114,31 @@ plt.xlabel('avg log prob')
 plt.ylabel('dpp score')
 plt.legend()
 plt.show()
+
+# %%
+import json
+from statistics import correlation
+from core.utils import is_correct, subsample, build_dpp_kernel, dpp_score
+from sentence_transformers import SentenceTransformer
+
+sbert = SentenceTransformer('all-MiniLM-L6-v2')
+
+for temp in [0.7]:
+    with open(f'dumps/sample_math_val_t-{temp}.jsonl') as f:
+        data = [json.loads(line) for line in f]
+    kernels = {}
+    for i, d in tqdm(enumerate(data), total=len(data), desc='caching kernels'):
+        preds = [s['generation']['content'] for s in d['preds']]
+        logps = [s['logprobs'] for s in d['preds']]
+        kernels[i] = build_dpp_kernel(preds, sbert=sbert)
+    for bsz in [4, 8, 16, 32]:
+        xs = []
+        ys = []
+        for prob_idx, d in enumerate(tqdm(data)):
+            batch = subsample(d['preds'], k=bsz, seed=prob_idx)
+            num_correct = sum(is_correct(b, d['problem']['solution']) for b in batch['content'])
+            dpp = dpp_score(kernels[prob_idx], batch['indices'])
+            xs.append(dpp)
+            ys.append(num_correct)
+        print(f'bsz={bsz}', correlation(xs, ys))
+        print(f'bsz={bsz}', correlation(xs, ys, method='ranked'))
