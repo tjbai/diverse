@@ -88,8 +88,13 @@ def maj_correct(solutions: List[str], gold: str, **_) -> Dict:
         'gold': gold_ans,
     }
 
-def mbr_correct(solutions: List[str]):
-    pass
+def mbr_correct(
+    solutions: List[str],
+    sbert: Optional[SentenceTransformer] = None,
+) -> Dict:
+    # if sbert is included, use semantic similarity
+    # otherwise, use self-BLEU
+    return {}
 
 def dist_n(strs: List[str], n: int = 3) -> float:
     all_ngrams = []
