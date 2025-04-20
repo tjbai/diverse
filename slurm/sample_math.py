@@ -20,15 +20,15 @@ llama = Llama.build(
    model_parallel_size=1,
 )
 
-problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='train')[:50]
+problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='val')[:50]
 
 BSZ = 32
 TOP_P = 1.0
-TEMPS = [0.7, 1.0, 1.3]
+TEMPS = [0.3, 0.5]
 MAX_GEN = 1024
 
-with open('/home/tbai4/diverse/dumps/sample_math.jsonl', 'a') as f:
-    for temp in TEMPS:
+for temp in TEMPS:
+    with open(f'/home/tbai4/diverse/dumps/sample_math_val_t-{temp}.jsonl', 'a') as f:
         for problem in tqdm(problems, desc=f'temp={temp}'):
             preds = llama.chat_completion(
                 dialogs=[[{'role': 'user', 'content': f'Solve the following math problem step-by-step: {problem['problem']}\nPresent the answer in LaTex format: \boxed{{Your answer}}'}] for _ in range(BSZ)],
@@ -43,3 +43,4 @@ with open('/home/tbai4/diverse/dumps/sample_math.jsonl', 'a') as f:
                 'preds': preds,
                 'temperature': temp,
             }))
+            f.write('\n')
