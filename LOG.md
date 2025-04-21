@@ -64,7 +64,10 @@ the plausible conclusion is that math problems may have a relatively unimodal ou
 | 16         | -0.5545   | -0.5333    |
 | 32         | -0.5916   | -0.5852    |
 
-## 4/20
+## 4/20:
+
+it also seems plausible that our RM is not very good, which would help explain the `best_correct` results above.
+(really I should train/fine-tune one myself on our samples)
 
 ## 4/20
 
