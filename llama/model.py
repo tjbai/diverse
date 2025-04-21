@@ -154,14 +154,16 @@ class Attention(nn.Module):
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
-        self.cache_k = self.cache_k.to(xq)
-        self.cache_v = self.cache_v.to(xq)
-
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
-
-        keys = self.cache_k[:bsz, : start_pos + seqlen]
-        values = self.cache_v[:bsz, : start_pos + seqlen]
+        if self.training:
+            keys = xk
+            values = xv
+        else:
+            self.cache_k = self.cache_k.to(xq)
+            self.cache_v = self.cache_v.to(xq)
+            self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
+            self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
+            keys = self.cache_k[:bsz, : start_pos + seqlen]
+            values = self.cache_v[:bsz, : start_pos + seqlen]
 
         # repeat k/v heads if n_kv_heads < n_heads
         keys = repeat_kv(keys, self.n_rep)  # (bs, cache_len + seqlen, n_local_heads, head_dim)
@@ -334,15 +336,6 @@ class Transformer(nn.Module):
                 adapter = getattr(layer.attention, name)
                 if hasattr(adapter, 'disable_adapters'):
                     adapter.disable_adapters = not enabled
-
-    # TODO -- for training this would ideally happen in-place without breaking autograd
-    def reposition_cache(self, where: torch.Tensor, from_pos: torch.Tensor, to_pos: torch.Tensor):
-        self.cache_k[:, :, where, :, :] = reposition_rotary_emb(
-            self.cache_k[:, :, where, :, :],
-            from_pos,
-            to_pos,
-            self.freqs_cis
-        )
 
     def reshape_cache(self, new_batch_size: Optional[int] = None):
         tot = self.params.max_batch_size * self.params.max_seq_len

@@ -24,7 +24,7 @@ class RmDataset(Dataset):
             _data = json.load(f)
 
         self.data = []
-        for d in tqdm(_data[:1]):
+        for d in tqdm(_data):
             for s in d['preds']:
                 try:
                     tokens = self.format.encode_dialog_prompt([{
@@ -122,7 +122,6 @@ def finetune(
     data_path: str,
     ckpt_dir: str,
     tokenizer_path: str,
-    task: str,
     output_dir: str = "checkpoints",
     max_batch_size: int = 32,
     max_seq_len: int = 2048,
@@ -153,10 +152,10 @@ def finetune(
     dataset = RmDataset(data_path, tokenizer, max_seq_len=max_seq_len)
     trainer = LoraTrainer(llama, output_dir, learning_rate)
 
-    generator = torch.Generator().manual_seed(42)
+    generator = torch.Generator(device='cuda').manual_seed(42)
     train_dataset, val_dataset = random_split(dataset, [0.9, 0.1], generator=generator)
-    train_loader = DataLoader(train_dataset, batch_size=max_batch_size, shuffle=True, pin_memory=True, collate_fn=train_dataset.collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=max_batch_size, shuffle=False, collate_fn=train_dataset.collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=max_batch_size, shuffle=True, collate_fn=RmDataset.collate_fn, generator=generator)
+    val_loader = DataLoader(val_dataset, batch_size=max_batch_size, shuffle=False, collate_fn=RmDataset.collate_fn, generator=generator)
     assert len(train_dataset) > 0 and len(val_dataset) > 0
     print(f'Train Dataset: {len(train_dataset)} samples')
     print(f'Val Dataset: {len(val_dataset)} samples')
