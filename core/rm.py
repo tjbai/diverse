@@ -24,7 +24,7 @@ class RmDataset(Dataset):
             _data = json.load(f)
 
         self.data = []
-        for d in _data:
+        for d in tqdm(_data[:1]):
             for s in d['preds']:
                 try:
                     tokens = self.format.encode_dialog_prompt([{
@@ -34,15 +34,15 @@ class RmDataset(Dataset):
                     if len(tokens) > self.max_seq_len:
                         tokens = tokens[:self.max_seq_len]
 
-                    attn_mask = [1] * len(tokens)
+                    pad_mask = [1] * len(tokens)
                     padding = self.max_seq_len - len(tokens)
                     if padding > 0:
                         tokens.extend([0] * padding)
-                        attn_mask.extend([0] * padding)
+                        pad_mask.extend([0] * padding)
 
                     self.data.append({
                         'input_tokens': tokens,
-                        'attn_mask': attn_mask,
+                        'pad_mask': pad_mask,
                         'label': 10 if is_correct(s['generation']['content'], d['problem']['solution']) else 12
                     })
                 except:
@@ -53,6 +53,13 @@ class RmDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx]
+
+    @staticmethod
+    def collate_fn(batch):
+        inputs = torch.tensor([item['input_tokens'] for item in batch], device='cuda')
+        pad_mask = torch.tensor([item['pad_mask'] for item in batch], device='cuda').bool()
+        outputs = torch.tensor([item['label'] for item in batch], device='cuda')
+        return {'input_tokens': inputs, 'pad_mask': pad_mask, 'label': outputs}
 
 class LoraTrainer:
     def __init__(self, llama: Llama, output_dir: str, learning_rate: float):
@@ -73,8 +80,8 @@ class LoraTrainer:
         }, self.output_dir / f'lora_step-{global_step}.pt')
 
     def step(self, data: Dict) -> Tuple[torch.Tensor, Dict]:
-        logits = self.model(data['input_tokens'], mask=data['attn_mask'])
-        last_token_pos = data['attn_mask'].sum(dim=1) - 1
+        logits = self.model(data['input_tokens'], start_pos=0)
+        last_token_pos = data['pad_mask'].sum(dim=1) - 1
         last_token_logits = logits[torch.arange(logits.size(0)), last_token_pos]
         loss = F.cross_entropy(last_token_logits, data['label'])
         return loss, {'train/loss': loss.item()}
@@ -146,10 +153,10 @@ def finetune(
     dataset = RmDataset(data_path, tokenizer, max_seq_len=max_seq_len)
     trainer = LoraTrainer(llama, output_dir, learning_rate)
 
-    generator = torch.Generator(device="cuda").manual_seed(42)
+    generator = torch.Generator().manual_seed(42)
     train_dataset, val_dataset = random_split(dataset, [0.9, 0.1], generator=generator)
-    train_loader = DataLoader(train_dataset, batch_size=max_batch_size, shuffle=True, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=max_batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=max_batch_size, shuffle=True, pin_memory=True, collate_fn=train_dataset.collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=max_batch_size, shuffle=False, collate_fn=train_dataset.collate_fn)
     assert len(train_dataset) > 0 and len(val_dataset) > 0
     print(f'Train Dataset: {len(train_dataset)} samples')
     print(f'Val Dataset: {len(val_dataset)} samples')
