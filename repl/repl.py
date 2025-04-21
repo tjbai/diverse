@@ -107,13 +107,15 @@ partial_corr(df, x='dpp', y='maj_correct', covar='avg_log_prob', method='spearma
 df['qbin'] = pd.qcut(df.avg_log_prob,4,labels=False)
 print(df.groupby('qbin')['dpp'].corr(df.maj_correct))
 
-plt.scatter(df[df['temp']==0.7]['avg_log_prob'], df[df['temp']==0.7]['dpp'], color='blue', s=df[df['temp']==0.7]['sample_size']*5, alpha=0.7, label='temp=0.7')
-plt.scatter(df[df['temp']==1.0]['avg_log_prob'], df[df['temp']==1.0]['dpp'], color='red', s=df[df['temp']==1.0]['sample_size']*5, alpha=0.7, label='temp=1.0')
-plt.title('MATH preliminary')
-plt.xlabel('avg log prob')
-plt.ylabel('dpp score')
+plt.figure(figsize=(12, 8), dpi=300)
+plt.scatter(np.exp(-df[df['temp']==0.7]['avg_log_prob']), df[df['temp']==0.7]['dpp'], color='blue', s=df[df['temp']==0.7]['sample_size']*5, alpha=0.7, label='temp=0.7')
+plt.scatter(np.exp(-df[df['temp']==1.0]['avg_log_prob']), df[df['temp']==1.0]['dpp'], color='red', s=df[df['temp']==1.0]['sample_size']*5, alpha=0.7, label='temp=1.0')
+plt.xscale('log')
+plt.title('MATH prelim batch likelihood vs. diversity')
+plt.xlabel('ppl')
+plt.ylabel('dpp score w/ sbert embeddings')
 plt.legend()
-plt.show()
+plt.savefig('figures/batch_ll_vs_diversity.png')
 
 # %%
 import json
