@@ -20,16 +20,15 @@ llama = Llama.build(
    model_parallel_size=1,
 )
 
-problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='val')[:200]
+problems = load_math(root_dir='/home/tbai4/diverse/data/MATH', split='val')[:500]
 
-
-BSZ = 32
+BSZ = 4
 TOP_P = 1.0
-TEMPS = [0.3, 0.5]
+TEMPS = [0.3, 0.5, 0.7, 1.0]
 MAX_GEN = 1024
 
 for temp in TEMPS:
-    with open(f'/home/tbai4/diverse/dumps/sample_math_val_t-{temp}.jsonl', 'a+') as f:
+    with open(f'/home/tbai4/diverse/dumps/sample_math_train_t-{temp}.jsonl', 'a+') as f:
         f.seek(0)
         existing = set(json.loads(line)['problem']['problem'] for line in f)
 

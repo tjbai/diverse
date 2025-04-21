@@ -30,7 +30,7 @@ for temp in [0.3, 0.5, 0.7, 1.0]:
     rm_cache = {}
     for bsz in [4, 8, 16, 32]:
         for prob_idx, d in enumerate(tqdm(data)):
-            for boot in range(50):
+            for boot in range(10):
                 batch = subsample(d['preds'], k=bsz, seed=prob_idx+boot)
 
                 seqs = batch['content']
@@ -65,3 +65,4 @@ for temp in [0.3, 0.5, 0.7, 1.0]:
 
     df = pd.DataFrame(rows)
     df.to_parquet('/home/tbai4/diverse/dumps/bootstrap_acc.parquet', index=False)
+

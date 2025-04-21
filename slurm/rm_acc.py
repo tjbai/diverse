@@ -36,16 +36,16 @@ for temp in [0.3, 0.5, 0.7, 1.0]:
             p_plus = torch.softmax(logits[batch, last], 1)[:, plus_id].tolist()
 
         preds = np.array(p_plus) > 0.5
-        is_correct = np.array([is_correct(
+        corr = np.array([is_correct(
             sol['generation']['content'],
             d['problem']['problem'],
         ) for sol in d['preds']])
-        agg_acc += int(sum(preds == is_correct))
+        agg_acc += int(sum(preds == corr))
 
         rows.append({
             'unit': d,
             'p_plus': p_plus,
-            'acc': int(sum(preds == is_correct)),
+            'acc': int(sum(preds == corr)),
         })
 
     print(f't={temp}, acc={agg_acc / (len(data) * 32)}')
