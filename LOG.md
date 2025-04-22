@@ -158,4 +158,17 @@ realizing that this is basically just an exploration/exploitation tradeoff—arX
 
 the nice thing about sequential generation is that the model adaptively figures out what other things to exploit while maintaining feasibility.
 
-## 4/22:
+## 4/22: 769d19b2c3d493e3aa2aeca7024101d2060ddce0
+
+measure correlation between diversity and coverage (rather than some aggregated metric)—this or something like pass@k might be better moving forward because it's simple and (probably) correlates well with other things
+
+| k  | Measure | Correlation | Partial Correlation |
+|----|---------|-------------|---------------------|
+| 4  | cos sim | 0.437       | 0.354               |
+| 4  | dist-3  | -0.067      | 0.204               |
+| 8  | cos sim | 0.508       | 0.382               |
+| 8  | dist-3  | -0.356      | 0.034               |
+| 16 | cos sim | 0.531       | 0.325               |
+| 16 | dist-3  | -0.435      | 0.081               |
+| 32 | cos sim | 0.565       | 0.355               |
+| 32 | dist-3  | -0.526      | 0.010               |

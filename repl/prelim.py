@@ -186,19 +186,22 @@ for sample_size in [4, 8, 16, 32]:
 
 # %%
 import json
-from core.utils import is_correct
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 import numpy as np
 
 from scipy import stats
-from core.utils import avg_cosine_sim, dist_n
 from statistics import correlation, mean
+from core.utils import avg_cosine_sim, dist_n, is_correct, best_correct, mbr_correct, maj_correct
 
 import random
 random.seed(42)
 
 sbert = SentenceTransformer('all-MiniLM-L6-v2')
+tokenizer = AutoTokenizer.from_pretrained('/scratch4/jeisner1/tjbai/llama_orm')
+rm = AutoModelForCausalLM.from_pretrained('/scratch4/jeisner1/tjbai/llama_orm', torch_dtype=torch.bfloat16).to('cuda')
 
 with open('dumps/sample_math_val_t-1.0.jsonl') as f:
     data = [json.loads(line) for line in f]
@@ -221,6 +224,7 @@ for d in tqdm(data):
             'content': s['generation']['content'],
             'correct': is_correct(s['generation']['content'], d['problem']['solution']),
             'likelihood': mean(s['logprobs']),
+            'problem': d['problem']['problem'],
         })
     groups.append(group)
 
@@ -229,6 +233,8 @@ for k in [4, 8, 16, 32]:
     lexs = []
     likelihoods = []
     coverage = []
+    majs = []
+    bests = []
     for g in tqdm(groups):
         unit = random.sample(g, k=k)
         sems.append(avg_cosine_sim([i['content'] for i in unit], sbert))
