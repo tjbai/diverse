@@ -183,3 +183,60 @@ for sample_size in [4, 8, 16, 32]:
 
         plt.tight_layout()
         plt.savefig(f'figures/multidim_best_n-{sample_size}_t-{temp}.png', dpi=300)
+
+# %%
+import json
+from core.utils import is_correct
+from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
+import numpy as np
+
+from scipy import stats
+from core.utils import avg_cosine_sim, dist_n
+from statistics import correlation, mean
+
+import random
+random.seed(42)
+
+sbert = SentenceTransformer('all-MiniLM-L6-v2')
+
+with open('dumps/sample_math_val_t-1.0.jsonl') as f:
+    data = [json.loads(line) for line in f]
+
+def partial_corr(x, y, z):
+    x = np.array(x, dtype=float)
+    y = np.array(y, dtype=float)
+    z = np.array(z, dtype=float)
+    slope_x, intercept_x, _, _, _ = stats.linregress(z, x)
+    x_resid = x - (slope_x * z + intercept_x)
+    slope_y, intercept_y, _, _, _ = stats.linregress(z, y)
+    y_resid = y - (slope_y * z + intercept_y)
+    return stats.pearsonr(x_resid, y_resid)[0]
+
+groups = []
+for d in tqdm(data):
+    group = []
+    for s in d['preds']:
+        group.append({
+            'content': s['generation']['content'],
+            'correct': is_correct(s['generation']['content'], d['problem']['solution']),
+            'likelihood': mean(s['logprobs']),
+        })
+    groups.append(group)
+
+for k in [4, 8, 16, 32]:
+    sems = []
+    lexs = []
+    likelihoods = []
+    coverage = []
+    for g in tqdm(groups):
+        unit = random.sample(g, k=k)
+        sems.append(avg_cosine_sim([i['content'] for i in unit], sbert))
+        lexs.append(dist_n([i['content'] for i in unit]))
+        likelihoods.append(mean(i['likelihood'] for i in unit))
+        coverage.append(sum(i['correct'] for i in unit) / k)
+    print(f'### k={k}')
+    print('cos sim corr', correlation(sems, coverage))
+    print('cos sim partial corr', partial_corr(sems, coverage, likelihoods))
+    print('dist n  corr', correlation(lexs, coverage))
+    print('dist n partial corr', partial_corr(lexs, coverage, likelihoods))
