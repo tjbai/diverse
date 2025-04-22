@@ -83,9 +83,9 @@ for sample_size in [4, 8, 16, 32]:
         for temp in [1.0, 0.7, 0.5, 0.3]:
             df_temp = df_filtered_by_size[df_filtered_by_size['temp'] == temp]
             df_deduped = df_temp.drop_duplicates(subset=['problem_id'], keep='first')
-            ax.scatter(df_deduped['qual_dpp'], df_deduped[y_col], alpha=0.4, label=f'temp={temp}')
-        ax.set_xlabel('qual_dpp')
-        ax.set_ylabel(f'{y_col}')
+            ax.scatter(df_deduped[y_col], df_deduped['qual_dpp'], alpha=0.4, label=f'temp={temp}')
+        ax.set_xlabel(f'{y_col}')
+        ax.set_ylabel('qual_dpp')
         ax.set_title(f'batch_size={sample_size}')
         ax.legend()
         ax.grid(True, linestyle='--', alpha=0.6)
