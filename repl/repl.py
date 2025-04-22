@@ -63,8 +63,8 @@ from tabulate import tabulate
 
 df = pd.read_parquet('dumps/bootstrap_small_acc.parquet')
 
-metrics   = ['dpp', 'qual_dpp', 'cosine_sim', 'dist_n', 'avg_log_prob']
-accuracy  = ['maj_correct', 'best_correct', 'sem_mbr_correct', 'lex_mbr_correct']
+metrics = ['dpp', 'qual_dpp', 'cosine_sim', 'dist_n', 'avg_log_prob']
+accuracy = ['maj_correct', 'best_correct', 'sem_mbr_correct', 'lex_mbr_correct']
 keep_cols = metrics + accuracy
 
 acc_by_n = df.groupby('sample_size')[accuracy].mean()
@@ -131,7 +131,6 @@ for temp in [0.7]:
     kernels = {}
     for i, d in tqdm(enumerate(data), total=len(data), desc='caching kernels'):
         preds = [s['generation']['content'] for s in d['preds']]
-        logps = [s['logprobs'] for s in d['preds']]
         kernels[i] = build_dpp_kernel(preds, sbert=sbert)
     for bsz in [4, 8, 16, 32]:
         xs = []

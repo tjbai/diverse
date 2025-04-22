@@ -28,7 +28,7 @@
 !data/**
 
 !repl
-!repl/**repl.py
+!repl/**.py
 
 !figures
 !figures/**.png
