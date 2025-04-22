@@ -151,3 +151,11 @@ what if we use the encodings from our ORM? need to figure out whether this ORM i
 |      0.179775 |       0.247191 |          0.191011 |          0.224719 | -1.67926  | -1.15829   | -1.39358  |      89 |
 |      0.121387 |       0.242775 |          0.148362 |          0.183044 | -1.15259  | -0.609072  | -0.785376 |     519 |
 |      0.537755 |       0.593395 |          0.530903 |          0.552967 | -0.608525 | -0.0601202 | -0.234665 |    7297 |
+
+tons of figures that i was trying to read like tealeaves...
+
+realizing that this is basically just an exploration/exploitation tradeoff—arXiv:2504.13837 shows that post-RLVR models put everything on exploit while the base models are lower entropy, so they win when you sample more sequences.
+
+the nice thing about sequential generation is that the model adaptively figures out what other things to exploit while maintaining feasibility.
+
+## 4/22:
